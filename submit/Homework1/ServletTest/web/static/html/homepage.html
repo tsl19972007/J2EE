@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>购物车</title>
+    <script src="https://cdn.staticfile.org/jquery/1.10.2/jquery.min.js"></script>
+    <style>
+        #cart th,td{
+            width:100px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>商品列表</h1>
+    <table id="commodity" border="1" cellspacing="0" cellpadding="0" class="hide">
+        <thead>
+        <tr>
+            <th>
+                编号
+            </th>
+            <th>
+                名称
+            </th>
+            <th>
+                单价
+            </th>
+            <th>
+                操作
+            </th>
+        </tr>
+        </thead>
+        <tbody id="commodityBody">
+        </tbody>
+    </table>
+    <h1>购物车</h1>
+    <table id="cart" border="1" cellspacing="0" cellpadding="0" class="hide">
+        <thead>
+        <tr>
+            <th>
+                编号
+            </th>
+            <th>
+                名称
+            </th>
+            <th>
+                数量
+            </th>
+            <th>
+                单价
+            </th>
+            <th>
+                小计
+            </th>
+            <th>
+                操作
+            </th>
+        </tr>
+        </thead>
+        <tbody id="cartBody">
+        </tbody>
+    </table>
+    <h2>总价格：￥<span id="totalPrice">0</span></h2>
+    <button id="submit">提交订单</button>
+</div>
+</body>
+<script>
+    var item_list=[];
+    $.ajax({
+        url:"GetCommodity",//要请求的服务器url
+        async:true,   //是否为异步请求
+        type:"GET", //请求方式为GET
+        success:function(result){
+            var comStrs=result.split(";");
+            for(var i=0;i<comStrs.length;i++){
+                var split=comStrs[i].split(",");
+                var com=new Commodity(split[0],split[1],parseInt(split[2]));
+                addComInTable(com);
+            }
+        }
+    });
+    $.ajax({
+        url:"ShoppingCart",//要请求的服务器url
+        async:true,   //是否为异步请求
+        type:"GET", //请求方式为GET
+        success:function(result){
+            if(!result||result.length<0){
+                return;
+            }
+            item_list=stringToItemList(result);
+            updateCartTable();
+        }
+    });
+    document.getElementById('submit').onclick=function(){
+        if(item_list.length==0){
+            alert("购物车为空");
+            return;
+        }
+        $.ajax({
+            url:"SubmitOrder",//要请求的服务器url
+            async:true,   //是否为异步请求
+            type:"POST", //请求方式为POST
+            success:function(result){
+                alert(result);
+            }
+        });
+    };
+    function Item(id,name,num,price,sum){
+        this.id=id;
+        this.name=name;
+        this.num=num;
+        this.price=price;
+        this.sum=sum;
+    }
+    function Commodity(id,name,price){
+        this.id=id;
+        this.name=name;
+        this.price=price;
+    }
+    function addItemInTable(item){
+        var tbody=document.getElementById('cartBody');
+        var tr=document.createElement('tr');
+        var td_id=document.createElement('td');
+        td_id.innerHTML=item.id;
+        tr.appendChild(td_id);
+        var td_name=document.createElement('td');
+        td_name.innerHTML=item.name;
+        tr.appendChild(td_name);
+        var td_num=document.createElement('td');
+        td_num.innerHTML=item.num;
+        tr.appendChild(td_num);
+        var td_price=document.createElement('td');
+        td_price.innerHTML=item.price;
+        tr.appendChild(td_price);
+        var td_sum=document.createElement('td');
+        td_sum.innerHTML=item.sum;
+        tr.appendChild(td_sum);
+        var td_del=document.createElement('td');
+        var btn_del=document.createElement('button');
+        btn_del.innerHTML='删除';
+        btn_del.onclick=function(){
+            var tr = this.parentNode.parentNode;
+            var id = tr.firstChild.innerHTML;
+            if (confirm("确定删除？")) {
+                deleteItemById(id);
+                updateCartTable();
+                updateSession();
+            }
+        };
+        td_del.appendChild(btn_del);
+        tr.appendChild(td_del);
+        tbody.appendChild(tr);
+    }
+    function addComInTable(commodity){
+        var tbody=document.getElementById('commodityBody');
+        var tr=document.createElement('tr');
+        var td_id=document.createElement('td');
+        td_id.innerHTML=commodity.id;
+        tr.appendChild(td_id);
+        var td_name=document.createElement('td');
+        td_name.innerHTML=commodity.name;
+        tr.appendChild(td_name);
+        var td_price=document.createElement('td');
+        td_price.innerHTML=commodity.price;
+        tr.appendChild(td_price);
+        var td_add=document.createElement('td');
+        var btn_add=document.createElement('button');
+        btn_add.innerHTML='添加';
+        btn_add.onclick=function(){
+            var tr = this.parentNode.parentNode;
+            var id = tr.firstChild.innerHTML;
+            var name=tr.childNodes[1].innerHTML;
+            var price=parseInt(tr.childNodes[2].innerHTML);
+            var item=new Item(id,name,1,price,price);
+            updateSession();
+            addItem(item);
+            updateCartTable();
+        };
+        td_add.appendChild(btn_add);
+        tr.appendChild(td_add);
+        tbody.appendChild(tr);
+    }
+    function deleteItemById(id){
+        var temp=[];
+        for(var i=0;i<item_list.length;i++){
+            if(item_list[i].id!=id){
+                temp.push(item_list[i]);
+            }
+        }
+        item_list=temp;
+    }
+    function addItem(item){
+        var found=0;
+        var id=item.id;
+        for(var i=0;i<item_list.length;i++){
+            if(item_list[i].id==id){
+                found=1;
+                item_list[i].num+=1;
+                item_list[i].sum+=parseInt(item_list[i].price);
+                break;
+            }
+        }
+        if(found==0){
+            item_list.push(item);
+        }
+    }
+    function updateCartTable(){
+        var tbody=document.getElementById('cartBody');
+        tbody.innerHTML="";
+        for(var i=0;i<item_list.length;i++){
+            addItemInTable((item_list[i]));
+        }
+        document.getElementById('totalPrice').innerHTML=getTotalPrice();
+    }
+    function updateSession(){
+        var str=itemListToString();
+            $.ajax({
+                url: "ShoppingCart",//要请求的服务器url
+                async: true,   //是否为异步请求
+                type: "POST", //请求方式为POST
+                data: {"item_list": str},
+                success: function (result) {
+                    alert(result.length);
+                    if(result!="success") {
+                        alert("未登录");
+                    }
+                }
+            });
+    }
+    function itemToString(item){
+        return item.id+":"+item.name+":"+item.num+":"+item.price+":"+item.sum;
+    }
+    function itemListToString(){
+        var res="";
+        for(var i=0;i<item_list.length;i++){
+            if(i!=0) res+=";";
+            res+=itemToString(item_list[i]);
+        }
+        return res;
+    }
+    function stringToItem(str){
+        var splits=str.split(":");
+        return new Item(splits[0],splits[1],parseInt(splits[2]),parseInt(splits[3]),parseInt(splits[4]));
+    }
+    function stringToItemList(str){
+        var list=[];
+        if(str=='null'){
+            return list;
+        }
+        var splits=str.split(";");
+        for(var i=0;i<splits.length;i++){
+            list.push(stringToItem(splits[i]));
+        }
+        return list;
+    }
+    function getTotalPrice(){
+        var total=0;
+        for(var i=0;i<item_list.length;i++){
+            total+=item_list[i].sum;
+        }
+        return total;
+    }
+</script>
+<script>
+</script>
+</html>

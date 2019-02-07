@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="https://cdn.staticfile.org/jquery/1.10.2/jquery.min.js"></script>
+</head>
+<body>
+    <h1>SSSSSSSSSSSSSSSS</h1>
+    <button id="submit">跳转</button>
+</body>
+<script>
+    document.getElementById('submit').onclick=function(){
+        $.ajax({
+            url:"HelloWorld",//要请求的服务器url
+            async:true,   //是否为异步请求
+            type:"POST", //请求方式为POST
+            success:function(result){
+            }
+        });
+    }
+</script>
+</html>
